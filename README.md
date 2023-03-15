@@ -18,9 +18,9 @@ The script utilizes multithreading to connect to multiple switches at the same t
 3.  Create a text file containing a list of switch IP addresses, one per line. For example:
     
     Copy code
-        192.168.1.1
-    192.168.1.2
-    192.168.1.3
+        `192.168.1.1`
+    `192.168.1.2`
+    `192.168.1.3`
 
 4.  Update the script with your device type, command set, and credentials. Specifically, modify the following variables:
     -   `device_type`: The device type of the switches. See [Netmiko's supported devices](https://github.com/ktbyers/netmiko/blob/develop/PLATFORMS.md) for a list of supported device types.
