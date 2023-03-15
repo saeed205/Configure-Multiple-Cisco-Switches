@@ -18,7 +18,8 @@ The script utilizes multithreading to connect to multiple switches at the same t
 3.  Create a text file containing a list of switch IP addresses, one per line. For example:
     
     Copy code
-        `192.168.1.1`
+    
+    `192.168.1.1`
         
     `192.168.1.2`
     
