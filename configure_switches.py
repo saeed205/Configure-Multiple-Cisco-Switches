@@ -1,5 +1,15 @@
+import logging
 from netmiko import ConnectHandler
 import concurrent.futures
+import getpass
+from colorama import init, Fore, Style
+
+# Initialize colorama
+init(autoreset=True)
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Define the device type and command set for netmiko
 device_type = 'cisco_ios'
@@ -9,12 +19,14 @@ command_set = ['ip access-list standard Cisco', 'permit 192.168.1.10', 'end', 'w
 with open('switch_list.txt', 'r') as f:
     switch_list = f.read().splitlines()
 
-# Create a list to store the SSH connections
-connections = []
+# Get username and password from the user
+username = input(Style.BRIGHT + Fore.CYAN + 'Enter your SSH username: ')
+password = getpass.getpass(Style.BRIGHT + Fore.CYAN + 'Enter your SSH password: ')
 
 # Define counters for successful and failed connections
 success_count = 0
 fail_count = 0
+failed_ips = []
 
 # Define a function to handle SSH connections
 def ssh_connect(device_ip):
@@ -22,42 +34,41 @@ def ssh_connect(device_ip):
     device = {
         'device_type': device_type,
         'ip': device_ip,
-        'username': 'your_username',
-        'password': 'your_password',
+        'username': username,
+        'password': password,
     }
     # Create a netmiko SSH connection to the device
     try:
         net_connect = ConnectHandler(**device)
         # Execute the commands
         output = net_connect.send_config_set(command_set)
-        # Print the output for verification
-        print(f'Successfully configured {device_ip}:\n{output}')
-        return True
+        # Log the output for verification
+        logger.info(Fore.GREEN + f'Successfully configured {device_ip}:\n{output} ✅')
+        return True, device_ip
     except Exception as e:
-        print(f'Error configuring {device_ip}: {e}')
-        return False
+        logger.error(Fore.RED + f'Error configuring {device_ip}: {e} ❌')
+        return False, device_ip
     finally:
         net_connect.disconnect()
 
 # Create a thread pool to handle the SSH connections
-with concurrent.futures.ThreadPoolExecutor(max_workers=len(switch_list)) as executor:
+with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
     # Submit the SSH connections to the thread pool
-    for switch_ip in switch_list:
-        connections.append(executor.submit(ssh_connect, switch_ip))
+    future_to_ip = {executor.submit(ssh_connect, switch_ip): switch_ip for switch_ip in switch_list}
 
-# Wait for all connections to complete
-for connection in concurrent.futures.as_completed(connections):
-    # Increment the counters based on the results
-    if connection.result():
+# Wait for all connections to complete and collect results
+for future in concurrent.futures.as_completed(future_to_ip):
+    success, ip = future.result()
+    if success:
         success_count += 1
     else:
         fail_count += 1
+        failed_ips.append(ip)
 
-# Print the results
-print(f'Successful connections: {success_count}')
-print(f'Failed connections: {fail_count}')
+# Print the results with emojis and colors
+logger.info(Style.BRIGHT + Fore.GREEN + f'Successful connections: {success_count} ✅')
+logger.info(Style.BRIGHT + Fore.RED + f'Failed connections: {fail_count} ❌')
 if fail_count > 0:
-    print('IP addresses of failed connections:')
-    for connection in connections:
-        if not connection.result():
-            print(connection.args[0])
+    logger.info(Style.BRIGHT + Fore.RED + 'IP addresses of failed connections:')
+    for ip in failed_ips:
+        logger.info(Fore.RED + ip)
