@@ -38,6 +38,7 @@ def ssh_connect(device_ip):
         'password': password,
     }
     # Create a netmiko SSH connection to the device
+    net_connect = None
     try:
         net_connect = ConnectHandler(**device)
         # Execute the commands
@@ -49,7 +50,8 @@ def ssh_connect(device_ip):
         logger.error(Fore.RED + f'Error configuring {device_ip}: {e} ❌')
         return False, device_ip
     finally:
-        net_connect.disconnect()
+        if net_connect:
+            net_connect.disconnect()
 
 # Create a thread pool to handle the SSH connections
 with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
